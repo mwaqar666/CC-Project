@@ -40,13 +40,9 @@ def load_image_from_upload(uploaded_file):
     return image, raw_bytes, uploaded_file.mimetype or "image/jpeg"
 
 
-def prepare_payload(image):
-    resized = cv2.resize(image, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
-    return base64.b64encode(cv2.imencode(".jpeg", resized)[1].tobytes()).decode("utf-8")
-
-
 def infer_image(image):
-    payload = prepare_payload(image)
+    resized = cv2.resize(image, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
+    payload = base64.b64encode(cv2.imencode(".jpeg", resized)[1].tobytes()).decode("utf-8")
     url = f"http://{MODEL_SERVER_HOST}:{MODEL_SERVER_PORT}/infer"
     started_at = time.perf_counter()
     response = requests.post(url, json={"data": payload}, timeout=30)
@@ -64,13 +60,11 @@ def sample_file(sample_path):
 def index():
     samples = discover_samples()
 
-    selected_sample = samples[0] if samples else ""
-    preview_url = f"/samples/{selected_sample}" if selected_sample else ""
     return render_template(
         "index.html",
         samples=samples,
-        selected_sample=selected_sample,
-        preview_url=preview_url,
+        selected_sample=None,
+        preview_url=None,
         labels=None,
         elapsed=None,
         error=None,
@@ -81,7 +75,7 @@ def index():
 @app.route("/infer", methods=["POST"])
 def infer():
     samples = discover_samples()
-    selected_sample = request.form.get("sample", samples[0] if samples else "")
+    selected_sample = request.form.get("sample")
     uploaded_file = request.files.get("image")
     preview_url = ""
 
@@ -90,11 +84,11 @@ def infer():
             image, raw_bytes, mime_type = load_image_from_upload(uploaded_file)
             preview_url = f"data:{mime_type};base64," + base64.b64encode(raw_bytes).decode("utf-8")
             selected_sample = uploaded_file.filename
-        else:
-            if not selected_sample:
-                raise FileNotFoundError("No sample image selected")
+        elif selected_sample:
             image, _ = load_image_from_sample(selected_sample)
             preview_url = f"/samples/{selected_sample}"
+        else:
+            raise ValueError("No image provided. Please select a sample or upload an image.")
 
         labels, elapsed, server_url = infer_image(image)
         return render_template(
