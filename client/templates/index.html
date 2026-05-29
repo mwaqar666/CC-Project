@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Inference Client</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <h1>Image Inference Client</h1>
+      <p class="subtitle">Pick a mounted sample or upload your own image. The container stays up and the page shows the predictions in-browser.</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-inner">
+          <p class="section-title">Inference</p>
+          <form method="post" enctype="multipart/form-data" action="/infer">
+            <label for="sample">Sample image</label>
+            <input type="hidden" name="sample" id="sample" value="{{ selected_sample }}">
+            <div
+              class="nested-picker"
+              id="sample-picker"
+              data-selected-sample="{{ selected_sample }}"
+              data-sample-tree='{{ sample_tree | tojson }}'
+            >
+              <button type="button" class="picker-trigger" id="picker-trigger" aria-haspopup="true" aria-expanded="false">
+                {{ selected_sample if selected_sample else 'Select a sample image' }}
+              </button>
+              <div class="picker-menu" id="picker-menu" hidden></div>
+            </div>
+
+            <label for="image">Or upload an image</label>
+            <input type="file" id="image" name="image" accept="image/*">
+
+            <button type="submit">Run inference</button>
+          </form>
+
+          <p class="hint">Model server: {{ server_url }}</p>
+
+          {% if error %}
+            <div class="result error"><strong>Error:</strong> {{ error }}</div>
+          {% endif %}
+
+          {% if labels %}
+            <div class="result">
+              <strong>Top predictions:</strong>
+              <div>{{ labels }}</div>
+              <div class="hint">Latency: {{ elapsed }} seconds</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-inner">
+          <p class="section-title">Preview</p>
+          <div class="preview" id="preview" data-sample-url="{{ preview_url }}">
+            {% if preview_url %}
+              <img src="{{ preview_url }}" alt="Selected image preview" id="preview-image">
+            {% else %}
+              <div class="empty-state">Choose a sample or upload a file to preview it here.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
