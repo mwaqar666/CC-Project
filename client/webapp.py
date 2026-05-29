@@ -23,47 +23,6 @@ def discover_samples() -> list:
     return [str(p.relative_to(BASE_IMAGE_DIR)) for p in BASE_IMAGE_DIR.rglob("*.jpg") if p.is_file()]
 
 
-def build_sample_tree(samples: list[str]) -> list[dict]:
-    root: dict = {}
-
-    for sample in samples:
-        parts = Path(sample).parts
-        node = root
-
-        for part in parts[:-1]:
-            node = node.setdefault(part, {"__type__": "dir", "__children__": {}})["__children__"]
-
-        node[parts[-1]] = {"__type__": "file", "__path__": sample}
-
-    def serialize(children: dict, parent_path: str = "") -> list[dict]:
-        items = []
-
-        for name in sorted(children.keys()):
-            entry = children[name]
-            path = f"{parent_path}/{name}" if parent_path else name
-
-            if entry["__type__"] == "dir":
-                items.append(
-                    {
-                        "name": name,
-                        "type": "dir",
-                        "path": path,
-                        "children": serialize(entry["__children__"], path),
-                    }
-                )
-            else:
-                items.append(
-                    {
-                        "name": name,
-                        "type": "file",
-                        "path": entry["__path__"],
-                    }
-                )
-
-        return items
-
-    return serialize(root)
-
 def load_image_from_sample(sample_path: str):
     absolute_path = BASE_IMAGE_DIR / sample_path
     image = cv2.imread(str(absolute_path))
@@ -104,14 +63,12 @@ def sample_file(sample_path):
 @app.route("/", methods=["GET"])
 def index():
     samples = discover_samples()
-    sample_tree = build_sample_tree(samples)
-    
+
     selected_sample = samples[0] if samples else ""
     preview_url = f"/samples/{selected_sample}" if selected_sample else ""
     return render_template(
         "index.html",
         samples=samples,
-        sample_tree=sample_tree,
         selected_sample=selected_sample,
         preview_url=preview_url,
         labels=None,
@@ -124,7 +81,6 @@ def index():
 @app.route("/infer", methods=["POST"])
 def infer():
     samples = discover_samples()
-    sample_tree = build_sample_tree(samples)
     selected_sample = request.form.get("sample", samples[0] if samples else "")
     uploaded_file = request.files.get("image")
     preview_url = ""
@@ -144,7 +100,6 @@ def infer():
         return render_template(
             "index.html",
             samples=samples,
-            sample_tree=sample_tree,
             selected_sample=selected_sample,
             preview_url=preview_url,
             labels=labels,
@@ -156,7 +111,6 @@ def infer():
         return render_template(
             "index.html",
             samples=samples,
-            sample_tree=sample_tree,
             selected_sample=selected_sample,
             preview_url=preview_url,
             labels=None,
