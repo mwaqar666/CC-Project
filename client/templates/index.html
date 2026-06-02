@@ -21,10 +21,12 @@
             <form method="post" enctype="multipart/form-data" action="/infer">
               <label for="sample">Sample image</label>
               <select id="sample" name="sample">
-                <option value="">Select a sample image</option>
-                {% for sample in samples %}
-                <option value="{{ sample }}" {% if sample == selected_sample %}selected{% endif %}>{{ sample }}</option>
-                {% endfor %}
+                <option>Select a sample image</option>
+                {% for sample in samples %} {% if sample == selected_sample %}
+                <option value="{{ sample }}" selected>{{ sample }}</option>
+                {% else %}
+                <option value="{{ sample }}">{{ sample }}</option>
+                {% endif %} {% endfor %}
               </select>
 
               <label for="image">Or upload an image</label>
