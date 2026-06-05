@@ -1,4 +1,6 @@
+ray
 torch
 torchvision
-aiohttp
 pillow
+fastapi
+uvicorn

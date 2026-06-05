@@ -7,6 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
 
-EXPOSE 8001
-
-CMD ["python", "server.py"]
+CMD ray start --head --dashboard-host=0.0.0.0 --dashboard-port=8265 --metrics-export-port=8080 --disable-usage-stats && serve run ray.yml

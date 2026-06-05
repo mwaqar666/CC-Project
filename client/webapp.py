@@ -10,8 +10,8 @@ from flask import Flask, render_template, request, send_from_directory
 
 
 BASE_IMAGE_DIR = Path(os.getenv("IMAGE_DIR", "/app/images"))
-MODEL_SERVER_HOST = os.getenv("MODEL_SERVER_HOST", "localhost")
-MODEL_SERVER_PORT = os.getenv("MODEL_SERVER_PORT", "8001")
+SERVER_HOST = os.getenv("SERVER_HOST", "localhost")
+SERVER_PORT = os.getenv("SERVER_PORT", "8001")
 
 app = Flask(__name__)
 
@@ -43,7 +43,7 @@ def load_image_from_upload(uploaded_file):
 def infer_image(image):
     resized = cv2.resize(image, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
     payload = base64.b64encode(cv2.imencode(".jpeg", resized)[1].tobytes()).decode("utf-8")
-    url = f"http://{MODEL_SERVER_HOST}:{MODEL_SERVER_PORT}/infer"
+    url = f"http://{SERVER_HOST}:{SERVER_PORT}/infer"
     started_at = time.perf_counter()
     response = requests.post(url, json={"data": payload}, timeout=30)
     elapsed = round(time.perf_counter() - started_at, 3)
@@ -68,7 +68,7 @@ def index():
         labels=None,
         elapsed=None,
         error=None,
-        server_url=f"http://{MODEL_SERVER_HOST}:{MODEL_SERVER_PORT}/infer",
+        server_url=f"http://{SERVER_HOST}:{SERVER_PORT}/infer",
     )
 
 
@@ -110,5 +110,5 @@ def infer():
             labels=None,
             elapsed=None,
             error=str(exc),
-            server_url=f"http://{MODEL_SERVER_HOST}:{MODEL_SERVER_PORT}/infer",
+            server_url=f"http://{SERVER_HOST}:{SERVER_PORT}/infer",
         ), 400
