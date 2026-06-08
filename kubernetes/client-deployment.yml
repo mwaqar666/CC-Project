@@ -1,0 +1,30 @@
+apiVersion: apps/v1 # Tells Kubernetes which version of its API to use to read this file.
+kind: Deployment # Tells Kubernetes to create a 'Deployment' object, which manages a set of identical pods.
+metadata:
+  name: client # The unique internal tracking name for this deployment in your cluster.
+spec:
+  replicas: 1 # Tells Kubernetes to always keep exactly 1 copy of this container running.
+  selector: # This block connects the deployment manager to the actual pods it controls.
+    matchLabels:
+      app: client # The deployment will manage any pod that has the label 'app: client'.
+  template: # This defines the blueprint or 'cookie cutter' configuration for creating new pods.
+    metadata:
+      labels:
+        app: client # Labels the pod with 'app: client' so the selector can find it.
+    spec:
+      containers: # Starts the configuration list for the actual containerized programs inside the pod.
+        - name: client # The name of the individual container inside this specific pod blueprint.
+          image: client-image:latest # The name of the Docker image to load into the container.
+          imagePullPolicy: Never # Stops Kubernetes from checking the internet; forces it to use your local Minikube images.
+          resources: # FIX: Sets boundaries for CPU and memory usage to remove the yellow warning lines.
+            limits:
+              cpu: "500m" # The absolute maximum CPU allowed (500m = half of 1 CPU core).
+              memory: "512Mi" # The absolute maximum memory allowed (512 Megabytes).
+            requests:
+              cpu: "250m" # The minimum guaranteed CPU reserved for this container to boot up.
+              memory: "256Mi" # The minimum guaranteed memory reserved for this container to boot up.
+          env: # Sets environmental variable strings accessible inside your Python application code.
+            - name: SERVER_HOST
+              value: "server" # Overrides localhost; points client.py directly to the Kubernetes server service.
+            - name: SERVER_PORT
+              value: "8000" # Directs traffic to the Ray Serve HTTP traffic entry port.
