@@ -16,6 +16,8 @@ spec:
         - name: client # The name of the individual container inside this specific pod blueprint.
           image: client-image:latest # The name of the Docker image to load into the container.
           imagePullPolicy: Never # Stops Kubernetes from checking the internet; forces it to use your local Minikube images.
+          command: ["python"] # The command to run inside the container when it starts up.
+          args: ["client.py"] # The arguments to pass to the command; in this case, it just runs the client.py script.
           resources: # FIX: Sets boundaries for CPU and memory usage to remove the yellow warning lines.
             limits:
               cpu: "500m" # The absolute maximum CPU allowed (500m = half of 1 CPU core).

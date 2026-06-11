@@ -9,11 +9,8 @@ services:
       - "8000:8000"
       - "8265:8265"
       - "8080:8080"
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./server
-          target: /app
+    volumes:
+      - ./server:/app
     shm_size: "2gb"
 
   prometheus:
@@ -31,14 +28,8 @@ services:
     depends_on:
       - server
     environment:
-      - FLASK_DEBUG=1
       - IMAGE_DIR=/app/images
       - SERVER_HOST=server
       - SERVER_PORT=8000
-    ports:
-      - "5001:5001"
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./client
-          target: /app
+    volumes:
+      - ./client:/app

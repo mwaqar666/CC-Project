@@ -4,9 +4,9 @@ This repository contains an automated cloud computing platform. It serves a ResN
 
 ## 🏗️ System Architecture
 
-- Server Component: Hosts a FastAPI web gateway and processes incoming request images using an isolated CPU-bound ResNet18 model execution worker.
-- Monitoring Component: A Prometheus timeseries database server that continuously pulls system metrics directly from the active Ray instances.
-- Client Component: An automated load testing engine and user interface (UI) web portal that generates traffic patterns based on defined workloads.
+- __Server Component:__ Hosts a FastAPI web gateway and processes incoming request images using an isolated CPU-bound ResNet18 model execution worker.
+- __Monitoring Component:__ A Prometheus timeseries database server that continuously pulls system metrics directly from the active Ray instances.
+- __Client Component:__ An automated load testing engine and user interface (UI) web portal that generates traffic patterns based on defined workloads.
 
 ## 🚀 Deployment Instructions
 
@@ -67,7 +67,7 @@ Run this command to view the live status of your model actors:
 kubectl port-forward deployment/ray-server 8265:8265
 ```
 
-- URL: http://localhost:8265
+- __URL:__ http://localhost:8265
 
 ### Open the Prometheus Data Interface
 
@@ -77,8 +77,8 @@ Run this command to inspect performance graphs and metrics:
 kubectl port-forward deployment/prometheus 9090:9090
 ```
 
-- URL: http://localhost:9090
-- Tip: Navigate to __Status -> Targets__ to ensure the server scraping state is green and __UP__.
+- __URL:__ http://localhost:9090
+- __Tip:__ Navigate to __Status -> Targets__ to ensure the server scraping state is green and __UP__.
 
 ### Open the Client Web UI Portal
 
@@ -88,4 +88,4 @@ Run this command to access your manual image upload interface:
 kubectl port-forward deployment/client 5001:5001
 ```
 
-- URL: http://localhost:5001
+- __URL:__ http://localhost:5001

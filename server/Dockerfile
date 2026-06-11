@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
 
-CMD ray start --head --dashboard-host=0.0.0.0 --dashboard-port=8265 --metrics-export-port=8080 && serve run ray.yml
+CMD ["ray", "start", "--head", "--dashboard-host=0.0.0.0", "--dashboard-port=8265", "--metrics-export-port=8080", "&&", "serve", "run", "ray.yml"]
