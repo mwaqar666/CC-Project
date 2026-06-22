@@ -2,68 +2,71 @@ import io
 import base64
 import time
 import torch
+import asyncio
 from PIL import Image
 from torchvision.models import resnet18, ResNet18_Weights
 from torchvision.transforms import v2 as transforms
 from fastapi import FastAPI, Request
-from ray import serve
+from prometheus_client import make_asgi_app, Gauge, Histogram
 
-# Configure strict CPU limits before the model loads, as required by your pods
+# Configure strict 1-CPU limits to prevent thread thrashing
 torch.set_num_interop_threads(1)
 torch.set_num_threads(1)
 
-# Initialize FastAPI framework
 app = FastAPI()
 
+# Add Prometheus metrics to replicate what Ray was doing automatically
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
-@serve.deployment(
-    num_replicas=1,  # Altered dynamically by your custom Autoscaler
-    max_ongoing_requests=1,  # Replicas process exactly 1 query at a time
-    ray_actor_options={"num_cpus": 1},  # Restricts worker replica to 1 CPU core
-)
-@serve.ingress(app)
-class ResNet18Deployment:
-    def __init__(self):
-        # Force CPU execution as required by your project guidelines
-        self.device = torch.device("cpu")
+# Custom metrics trackers
+INFERENCE_LATENCY = Histogram("ml_inference_latency_seconds", "Time spent performing model inference")
+QUEUE_LENGTH = Gauge("dispatcher_queue_length", "Number of queries currently waiting or processing")
 
-        # Load model and preprocessor using your specific IMAGENET1K_V1 configuration
-        self.preprocessor = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        self.resnet_model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).to(self.device)
-        self.resnet_model.eval()
+# The core concurrency constraint lock
+# This forces the pod to process EXACTLY 1 request at a time
+concurrency_lock = asyncio.Lock()
 
-        self.categories = ResNet18_Weights.IMAGENET1K_V1.meta["categories"]
+# Initialize Model on CPU
+device = torch.device("cpu")
+preprocessor = ResNet18_Weights.IMAGENET1K_V1.transforms()
+resnet_model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).to(device)
+resnet_model.eval()
+categories = ResNet18_Weights.IMAGENET1K_V1.meta["categories"]
 
-    @app.post("/infer")
-    async def infer_handler(self, request: Request):
-        """
-        Receives Base64 JSON payloads from the load tester,
-        queues them centrally via Ray Proxy, and processes them one-by-one.
-        """
+
+@app.post("/infer")
+async def infer_handler(request: Request):
+    # Increment our custom queue gauge tracker
+    QUEUE_LENGTH.inc()
+
+    # The lock forces incoming requests to line up sequentially
+    async with concurrency_lock:
         t = time.perf_counter()
 
-        # Parse the JSON payload exactly like your original handler
+        # Parse payload
         d = await request.json()
         decoded = base64.b64decode(d["data"])
         inp = Image.open(io.BytesIO(decoded))
 
-        # Apply your exact tensor conversions and transformations
+        # Core transformations
         inp_tensor = transforms.functional.to_image(inp)
         inp_tensor = transforms.functional.to_dtype(inp_tensor, torch.float32, scale=True)
-        inp = self.preprocessor(inp_tensor).unsqueeze(0).to(self.device)
+        inp = preprocessor(inp_tensor).unsqueeze(0).to(device)
 
-        # Execute Top-5 extraction logic
+        # Core ML Inference execution
         with torch.no_grad():
-            preds = self.resnet_model(inp)
+            preds = resnet_model(inp)
 
+        # Extract top 5 classification categories
         labels = []
         top5_indices = preds[0].argsort(descending=True)[:5].tolist()
         for idx in top5_indices:
-            labels.append(self.categories[idx])
+            labels.append(categories[idx])
 
-        print("Server-side processing took:", round(time.perf_counter() - t, 3))
+        duration = time.perf_counter() - t
+        INFERENCE_LATENCY.observe(duration)
+        QUEUE_LENGTH.dec()
+
+        print(f"Inference complete. Server-side latency: {round(duration, 3)}s")
         return labels
-
-
-# Bind the deployment for Ray Serve execution
-entrypoint = ResNet18Deployment.bind()

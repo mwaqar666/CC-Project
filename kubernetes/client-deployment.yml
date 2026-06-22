@@ -1,32 +1,32 @@
-apiVersion: apps/v1 # Tells Kubernetes which version of its API to use to read this file.
-kind: Deployment # Tells Kubernetes to create a 'Deployment' object, which manages a set of identical pods.
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: client # The unique internal tracking name for this deployment in your cluster.
+  name: client
+  labels:
+    app: client
 spec:
-  replicas: 1 # Tells Kubernetes to always keep exactly 1 copy of this container running.
-  selector: # This block connects the deployment manager to the actual pods it controls.
+  replicas: 1
+  selector:
     matchLabels:
-      app: client # The deployment will manage any pod that has the label 'app: client'.
-  template: # This defines the blueprint or 'cookie cutter' configuration for creating new pods.
+      app: client
+  template:
     metadata:
       labels:
-        app: client # Labels the pod with 'app: client' so the selector can find it.
+        app: client
     spec:
-      containers: # Starts the configuration list for the actual containerized programs inside the pod.
-        - name: client # The name of the individual container inside this specific pod blueprint.
-          image: client-image:latest # The name of the Docker image to load into the container.
-          imagePullPolicy: Never # Stops Kubernetes from checking the internet; forces it to use your local Minikube images.
-          command: ["python"] # The command to run inside the container when it starts up.
-          args: ["client.py"] # The arguments to pass to the command; in this case, it just runs the client.py script.
-          resources: # FIX: Sets boundaries for CPU and memory usage to remove the yellow warning lines.
+      containers:
+        - name: client
+          image: client-image:latest
+          imagePullPolicy: Never
+          resources:
             limits:
-              cpu: "500m" # The absolute maximum CPU allowed (500m = half of 1 CPU core).
-              memory: "512Mi" # The absolute maximum memory allowed (512 Megabytes).
+              cpu: "250m"
+              memory: "250Mi"
             requests:
-              cpu: "250m" # The minimum guaranteed CPU reserved for this container to boot up.
-              memory: "256Mi" # The minimum guaranteed memory reserved for this container to boot up.
-          env: # Sets environmental variable strings accessible inside your Python application code.
+              cpu: "250m"
+              memory: "250Mi"
+          env:
             - name: SERVER_HOST
-              value: "server" # Overrides localhost; points client.py directly to the Kubernetes server service.
+              value: "server"
             - name: SERVER_PORT
-              value: "8000" # Directs traffic to the Ray Serve HTTP traffic entry port.
+              value: "8000"

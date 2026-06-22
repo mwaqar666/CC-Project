@@ -8,14 +8,16 @@ data:
       scrape_interval: 15s
       evaluation_interval: 15s
     scrape_configs:
-      - job_name: "ray-metrics"
+      - job_name: "ml-server-metrics"
         static_configs:
-          - targets: ["server:8080"]
+          - targets: ["server:8000"]
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
+  labels:
+    app: prometheus
 spec:
   replicas: 1
   selector:
@@ -33,11 +35,11 @@ spec:
             - containerPort: 9090
           resources:
             limits:
-              cpu: "500m" # The absolute maximum CPU ceiling for the container.
-              memory: "512Mi" # The absolute maximum RAM allocation ceiling.
+              cpu: "250m"
+              memory: "250Mi"
             requests:
-              cpu: "250m" # The minimum CPU capacity required on initialization.
-              memory: "256Mi" # The minimum RAM capacity required on initialization.
+              cpu: "250m"
+              memory: "250Mi"
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus

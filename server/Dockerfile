@@ -7,4 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
 
-CMD ["ray", "start", "--head", "--dashboard-host=0.0.0.0", "--dashboard-port=8265", "--metrics-export-port=8080", "&&", "serve", "run", "ray.yml"]
+# Expose port 8000 for serving app inference and /metrics tracking telemetry 
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

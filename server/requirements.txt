@@ -1,6 +1,6 @@
-ray[default,serve]
+fastapi
+pillow
+prometheus_client
 torch
 torchvision
-pillow
-fastapi
 uvicorn

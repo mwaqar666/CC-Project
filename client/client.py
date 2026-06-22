@@ -16,7 +16,6 @@ BASE_IMAGE_DIR = Path(os.getenv("IMAGE_DIR", "/app/images"))
 def discover_samples():
     if not BASE_IMAGE_DIR.exists():
         return []
-
     return [str(p.relative_to(BASE_IMAGE_DIR)) for p in BASE_IMAGE_DIR.rglob("*.jpg") if p.is_file()]
 
 
@@ -37,42 +36,28 @@ def get_random_payload():
     return {"data": base64.b64encode(image_bytes).decode("utf-8")}
 
 
-async def send_single_request(session, req_id):
-    """Sends one asynchronous POST request and returns elapsed duration."""
+async def send_single_request(session, req_id, latencies_list):
+    """Sends one asynchronous POST request and records elapsed duration directly."""
     payload = get_random_payload()
     start_time = time.perf_counter()
     try:
         async with session.post(URL, json=payload, timeout=30) as response:
             if response.status == 200:
                 await response.json()
-                return time.perf_counter() - start_time
+                latency = time.perf_counter() - start_time
+                latencies_list.append(latency)
             else:
-                return "BAD_STATUS"
+                latencies_list.append("FAILED")
     except Exception:
-        return "TIMEOUT_OR_ERROR"
+        latencies_list.append("FAILED")
 
 
-async def run_one_second_wave(qps_target):
-    """Fires exactly N parallel connections simultaneously inside a 1-second block."""
-    start_wave = time.perf_counter()
-
+async def run_detached_wave(qps_target, latencies_list):
+    """Fires parallel connections in the background without blocking the 1-second clock."""
     async with aiohttp.ClientSession() as session:
-        # Construct and launch all requests at the exact same moment
-        tasks = [send_single_request(session, i) for i in range(qps_target)]
-        results = await asyncio.gather(*tasks)
-
-    valid_latencies = [r for r in results if isinstance(r, float)]
-    failed_count = len(results) - len(valid_latencies)
-
-    # Measure time spent on processing this entire second block
-    elapsed_wave = time.perf_counter() - start_wave
-
-    # Pause if tasks finished in less than 1 full second
-    time_to_sleep = 1.0 - elapsed_wave
-    if time_to_sleep > 0:
-        await asyncio.sleep(time_to_sleep)
-
-    return valid_latencies, failed_count
+        tasks = [send_single_request(session, i, latencies_list) for i in range(qps_target)]
+        # We still gather here so this specific wave finishes cleanly in its own background context
+        await asyncio.gather(*tasks)
 
 
 async def main():
@@ -87,24 +72,35 @@ async def main():
     workload_steps = [int(x) for x in content.split()]
     print(f"Beginning workload execution simulation. Total timeline: {len(workload_steps)} seconds.")
 
-    all_latencies = []
-    total_failed = 0
+    # A shared list where background tasks safely append results as they finish
+    all_results = []
 
     for sec_idx, qps in enumerate(workload_steps):
         print(f"[Timeline Second {sec_idx + 1}] Target load: {qps} requests/sec")
 
-        latencies, failed = await run_one_second_wave(qps)
-        all_latencies.extend(latencies)
-        total_failed += failed
+        # 1. Launch the wave into the background thread pool/event loop
+        asyncio.create_task(run_detached_wave(qps, all_results))
+
+        # 2. Rigidly freeze the loop main timeline tick for exactly 1 second
+        await asyncio.sleep(1.0)
+
+    print("\nWaiting for any final tail requests to wrap up processing...")
+    await asyncio.sleep(10.0)  # Grace period for last queries to clear the server pipeline
+
+    # Extract valid floats and separate failures
+    valid_latencies = [r for r in all_results if isinstance(r, float)]
+    total_failed = len(all_results) - len(valid_latencies)
 
     print("\n================ Experiment Finished ================")
-    if all_latencies:
-        all_latencies.sort()
-        p99_idx = int(len(all_latencies) * 0.99)
-        p99_latency = all_latencies[p99_idx]
-        print(f"Successful request transactions: {len(all_latencies)}")
+    if valid_latencies:
+        valid_latencies.sort()
+        p99_idx = int(len(valid_latencies) * 0.99)
+        p99_latency = valid_latencies[p99_idx]
+        print(f"Successful request transactions: {len(valid_latencies)}")
         print(f"Dropped or failed requests: {total_failed}")
         print(f"99th Percentile (P99) Latency Result: {round(p99_latency, 3)} seconds")
+    else:
+        print("No successful transactions processed.")
 
 
 if __name__ == "__main__":
