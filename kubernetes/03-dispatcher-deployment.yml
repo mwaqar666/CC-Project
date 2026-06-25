@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatcher
+  namespace: ml-apps
+  labels:
+    app: dispatcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dispatcher
+  template:
+    metadata:
+      labels:
+        app: dispatcher
+    spec:
+      containers:
+        - name: dispatcher
+          image: server-image:latest # ◄ CHANGED: Using your exact single server image
+          command: ["uvicorn", "dispatcher:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: code-volume
+              mountPath: /app
+          workingDir: /app
+      volumes:
+        - name: code-volume
+          hostPath:
+            path: /run/desktop/mnt/host/wsl/Project/server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dispatcher-service
+  namespace: ml-apps
+spec:
+  selector:
+    app: dispatcher
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP

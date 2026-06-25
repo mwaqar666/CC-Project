@@ -2,19 +2,18 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: ml-server-autoscaler
-  namespace: default
+  namespace: ml-apps
 spec:
-  # This targets your server deployment explicitly
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: server
+    name: worker-deployment
   minReplicas: 1
-  maxReplicas: 3 # Safe limit for your 8-core Mac
+  maxReplicas: 3
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70 # To switch to Experiment 2, simply change this to 90
+          averageUtilization: 70

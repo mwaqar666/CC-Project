@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 1. Automatically generate the ConfigMap from your raw standalone file
+configMapGenerator:
+  - name: prometheus-config
+    namespace: monitoring
+    files:
+      - prometheus.yml
+    options:
+      labels:
+        environment: development
+        tier: infrastructure
+        app: prometheus
+
+# 2. List the rest of your ordered files to track and spin up
+resources:
+  - 00-namespaces.yml
+  - 01-prometheus-rbac.yml
+  - 02-prometheus-deployment.yml
+  - 03-dispatcher-deployment.yml
+  - 04-hpa-baseline.yml
+  - 05-client-deployment.yml
+  - 06-worker-deployment.yml

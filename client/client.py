@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 # Grab host address variables defined by our Kubernetes deployment file
-SERVER_HOST = os.getenv("SERVER_HOST", "server")
+SERVER_HOST = os.getenv("SERVER_HOST", "dispatcher-service")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
 URL = f"http://{SERVER_HOST}:{SERVER_PORT}/infer"
 BASE_IMAGE_DIR = Path(os.getenv("IMAGE_DIR", "/app/images"))
@@ -52,12 +52,10 @@ async def send_single_request(session, req_id, latencies_list):
         latencies_list.append("FAILED")
 
 
-async def run_detached_wave(qps_target, latencies_list):
-    """Fires parallel connections in the background without blocking the 1-second clock."""
-    async with aiohttp.ClientSession() as session:
-        tasks = [send_single_request(session, i, latencies_list) for i in range(qps_target)]
-        # We still gather here so this specific wave finishes cleanly in its own background context
-        await asyncio.gather(*tasks)
+async def run_detached_wave(session, qps_target, latencies_list):
+    """Fires parallel connections in the background using the shared session."""
+    tasks = [send_single_request(session, i, latencies_list) for i in range(qps_target)]
+    await asyncio.gather(*tasks)
 
 
 async def main():
@@ -75,17 +73,19 @@ async def main():
     # A shared list where background tasks safely append results as they finish
     all_results = []
 
-    for sec_idx, qps in enumerate(workload_steps):
-        print(f"[Timeline Second {sec_idx + 1}] Target load: {qps} requests/sec")
+    # Maintain ONE single persistent connection pool session for the entire test run
+    async with aiohttp.ClientSession() as session:
+        for sec_idx, qps in enumerate(workload_steps):
+            print(f"[Timeline Second {sec_idx + 1}] Target load: {qps} requests/sec")
 
-        # 1. Launch the wave into the background thread pool/event loop
-        asyncio.create_task(run_detached_wave(qps, all_results))
+            # Pass the persistent session down to the background wave task
+            asyncio.create_task(run_detached_wave(session, qps, all_results))
 
-        # 2. Rigidly freeze the loop main timeline tick for exactly 1 second
-        await asyncio.sleep(1.0)
+            # Rigidly freeze the loop main timeline tick for exactly 1 second
+            await asyncio.sleep(1.0)
 
-    print("\nWaiting for any final tail requests to wrap up processing...")
-    await asyncio.sleep(10.0)  # Grace period for last queries to clear the server pipeline
+        print("\nWaiting for any final tail requests to wrap up processing...")
+        await asyncio.sleep(15.0)  # Grace period to let lagging worker transactions clear out
 
     # Extract valid floats and separate failures
     valid_latencies = [r for r in all_results if isinstance(r, float)]
@@ -94,7 +94,7 @@ async def main():
     print("\n================ Experiment Finished ================")
     if valid_latencies:
         valid_latencies.sort()
-        p99_idx = int(len(valid_latencies) * 0.99)
+        p99_idx = min(int(len(valid_latencies) * 0.99), len(valid_latencies) - 1)
         p99_latency = valid_latencies[p99_idx]
         print(f"Successful request transactions: {len(valid_latencies)}")
         print(f"Dropped or failed requests: {total_failed}")

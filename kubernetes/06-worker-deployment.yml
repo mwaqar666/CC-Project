@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+  namespace: ml-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: server-image:latest
+          command: ["python", "worker.py"]
+          resources:
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+          env:
+            - name: DISPATCHER_SERVICE_URL
+              value: "http://dispatcher-service.ml-apps.svc.cluster.local:8000"
+          volumeMounts:
+            - name: code-volume
+              mountPath: /app
+          workingDir: /app
+      volumes:
+        - name: code-volume
+          hostPath:
+            path: /run/desktop/mnt/host/wsl/Project/server

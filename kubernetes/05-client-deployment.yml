@@ -2,8 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: client
-  labels:
-    app: client
+  namespace: ml-apps
 spec:
   replicas: 1
   selector:
@@ -19,14 +18,14 @@ spec:
           image: client-image:latest
           imagePullPolicy: Never
           resources:
-            limits:
+            requests:
               cpu: "250m"
               memory: "250Mi"
-            requests:
+            limits:
               cpu: "250m"
               memory: "250Mi"
           env:
             - name: SERVER_HOST
-              value: "server"
+              value: "dispatcher-service.ml-apps.svc.cluster.local"
             - name: SERVER_PORT
               value: "8000"
