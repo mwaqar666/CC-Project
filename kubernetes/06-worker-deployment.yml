@@ -16,6 +16,7 @@ spec:
       containers:
         - name: worker
           image: server-image:latest
+          imagePullPolicy: Never
           command: ["python", "worker.py"]
           resources:
             limits:
