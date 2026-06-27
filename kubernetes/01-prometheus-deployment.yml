@@ -1,3 +1,36 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sa
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-cluster-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "nodes/metrics", "nodes/proxy", "services", "endpoints", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-global-binding
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-sa
+    namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: prometheus-cluster-reader
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,11 +54,11 @@ spec:
             - containerPort: 9090
           resources:
             requests:
-              cpu: "250m"
-              memory: "250Mi"
+              cpu: "400m"
+              memory: "512Mi"
             limits:
-              cpu: "250m"
-              memory: "500Mi"
+              cpu: "400m"
+              memory: "512Mi"
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus

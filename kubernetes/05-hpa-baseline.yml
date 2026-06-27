@@ -1,7 +1,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ml-server-autoscaler
+  name: builtin-autoscaler
   namespace: ml-apps
 spec:
   scaleTargetRef:

@@ -3,8 +3,6 @@ kind: Deployment
 metadata:
   name: dispatcher
   namespace: ml-apps
-  labels:
-    app: dispatcher
 spec:
   replicas: 1
   selector:
@@ -17,7 +15,7 @@ spec:
     spec:
       containers:
         - name: dispatcher
-          image: server-image:latest
+          image: dispatcher-image:latest
           imagePullPolicy: Never
           command: ["uvicorn", "dispatcher:app", "--host", "0.0.0.0", "--port", "8000"]
           ports:
@@ -25,19 +23,11 @@ spec:
               name: http
           resources:
             limits:
-              cpu: "500m"
-              memory: "512Mi"
-            requests:
-              cpu: "250m"
+              cpu: "200m"
               memory: "256Mi"
-          volumeMounts:
-            - name: code-volume
-              mountPath: /app
-          workingDir: /app
-      volumes:
-        - name: code-volume
-          hostPath:
-            path: /run/desktop/mnt/host/wsl/Project/server
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service

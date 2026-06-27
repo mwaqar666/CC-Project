@@ -9,16 +9,14 @@ configMapGenerator:
       - prometheus.yml
     options:
       labels:
-        environment: development
-        tier: infrastructure
         app: prometheus
 
 # 2. List the rest of your ordered files to track and spin up
 resources:
   - 00-namespaces.yml
-  - 01-prometheus-rbac.yml
-  - 02-prometheus-deployment.yml
-  - 03-dispatcher-deployment.yml
-  - 04-hpa-baseline.yml
-  - 05-client-deployment.yml
-  - 06-worker-deployment.yml
+  - 01-prometheus-deployment.yml
+  - 02-dispatcher-deployment.yml
+  - 03-worker-deployment.yml
+  - 04-client-deployment.yml
+  - 05-hpa-baseline.yml
+  - 06-autoscaler-deployment.yml

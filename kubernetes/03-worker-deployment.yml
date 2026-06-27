@@ -15,24 +15,16 @@ spec:
     spec:
       containers:
         - name: worker
-          image: server-image:latest
+          image: worker-image:latest
           imagePullPolicy: Never
           command: ["python", "worker.py"]
           resources:
             limits:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "1000m"
+              memory: "1024Mi"
             requests:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "1000m"
+              memory: "1024Mi"
           env:
             - name: DISPATCHER_SERVICE_URL
               value: "http://dispatcher-service.ml-apps.svc.cluster.local:8000"
-          volumeMounts:
-            - name: code-volume
-              mountPath: /app
-          workingDir: /app
-      volumes:
-        - name: code-volume
-          hostPath:
-            path: /run/desktop/mnt/host/wsl/Project/server

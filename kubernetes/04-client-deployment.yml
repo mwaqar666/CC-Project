@@ -17,13 +17,17 @@ spec:
         - name: client
           image: client-image:latest
           imagePullPolicy: Never
+          command: ["python", "client.py"]
+          ports:
+            - containerPort: 8000
+              name: metrics
           resources:
             requests:
-              cpu: "250m"
-              memory: "250Mi"
+              cpu: "200m"
+              memory: "128Mi"
             limits:
-              cpu: "250m"
-              memory: "250Mi"
+              cpu: "200m"
+              memory: "128Mi"
           env:
             - name: SERVER_HOST
               value: "dispatcher-service.ml-apps.svc.cluster.local"

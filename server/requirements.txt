@@ -1,7 +1,0 @@
-fastapi
-pillow
-prometheus_client
-torch
-torchvision
-uvicorn
-httpx
