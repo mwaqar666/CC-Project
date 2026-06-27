@@ -7,13 +7,12 @@ from kubernetes import client, config
 
 class PredictiveAutoscaler:
     def __init__(self):
-        config.load_incluster_config()
         self.apps_v1 = self.initialize_kube_client()
         self.prom_url = os.getenv("PROM_URL", "http://prometheus-service.monitoring.svc.cluster.local:9090/api/v1/query")
         self.namespace = os.getenv("NAMESPACE", "ml-apps")
         self.deployment_name = os.getenv("DEPLOYMENT_NAME", "worker-deployment")
         self.min_replicas = int(os.getenv("MIN_REPLICAS", "1"))
-        self.max_replicas = int(os.getenv("MAX_REPLICAS", "10"))
+        self.max_replicas = int(os.getenv("MAX_REPLICAS", "3"))
         self.scale_down_cooldown = int(os.getenv("SCALE_DOWN_COOLDOWN", "5"))
         self.last_scale_time = time.time()
 

@@ -4,7 +4,6 @@ import random
 import time
 import aiohttp
 import os
-import sys
 from pathlib import Path
 from prometheus_client import start_http_server, Counter, Gauge
 
@@ -118,13 +117,4 @@ if __name__ == "__main__":
     # Start the Prometheus scraping endpoint server on background port 8001
     start_http_server(8000)
 
-    # Check CLI arguments: If no explicit run argument is given, keep the pod sleeping
-    if len(sys.argv) > 1 and sys.argv[1] == "--run":
-        asyncio.run(client_runner.execute_experiment())
-    else:
-        print("Client Pod initialized in STANDBY mode. Persistent endpoint port 8001 open.")
-        print("To trigger the experiment run, execute: python client.py --run")
-
-        # Keep the process sleeping infinitely so the Kubernetes Pod doesn't die
-        loop = asyncio.get_event_loop()
-        loop.run_forever()
+    asyncio.run(client_runner.execute_experiment())
