@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit immediately if any individual command fails
-set -ex
+set -e
 
 # 1. Safely inspect the builder state
 inspect_builder() {
@@ -86,7 +86,7 @@ minikube addons enable metrics-server
 minikube addons enable dashboard
 
 echo "🔌 Connecting terminal session to Minikube's Docker daemon..."
-eval $(minikube docker-env)
+cleareval $(minikube docker-env)
 
 echo "🌐 Registering Minikube endpoints inside Docker contexts..."
 docker context rm minikube-context >/dev/null 2>&1 || true
