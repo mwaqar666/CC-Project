@@ -1,17 +1,15 @@
 import asyncio
 import time
 import uuid
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import make_asgi_app, Gauge, Counter, Histogram
 
 
 class MLDispatcher:
     def __init__(self):
-        # 1. Core State Initialization
         self.active_jobs = {}
         self.task_queue = asyncio.Queue()
 
-        # 2. Prometheus Metric Trackers
         self.queue_length = Gauge("dispatcher_queue_length", "Number of queries currently waiting in the backlog queue")
         self.incoming_reqs = Counter("dispatcher_requests_incoming_total", "Total request throughput entering dispatcher queue")
         self.outgoing_reqs = Counter("dispatcher_requests_outgoing_total", "Total request throughput pulled by ML workers")
@@ -22,62 +20,36 @@ class MLDispatcher:
             buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 2.0, 5.0, float("inf")),
         )
 
-        # 3. FastAPI App Initialization
-        self.app = FastAPI()
-
-        # Mount the Prometheus ASGI metrics endpoints
-        metrics_asgi = make_asgi_app()
-        self.app.mount("/metrics", metrics_asgi)
-
-        # 4. Explicit Route Registrations
-        self._register_routes()
-
-    def _register_routes(self):
-        """Binds the HTTP route endpoints to their respective class methods."""
-        self.app.add_api_route("/infer", self.infer_handler, methods=["POST"])
-        self.app.add_api_route("/get_job", self.get_job_handler, methods=["GET"])
-        self.app.add_api_route("/submit_result/{job_id}", self.submit_result_handler, methods=["POST"])
-
-    async def infer_handler(self, request: Request):
-        """
-        Client Route: Accepts image data from clients, places it onto the
-        centralized queue backlog, and waits until an ML worker completes it.
-        """
+    async def infer(self, payload: dict):
         self.incoming_reqs.inc()
         self.queue_length.inc()
 
         start_time = time.perf_counter()
-        payload = await request.json()
+        data = payload.get("data")
+        if not data:
+            raise HTTPException(status_code=400, detail="Missing data payload")
+
         job_id = str(uuid.uuid4())
 
-        # Create a future token to track the result of this unique job execution
         loop = asyncio.get_running_loop()
         job_future = loop.create_future()
         self.active_jobs[job_id] = job_future
 
-        # Enqueue task context for workers to pull
-        task_context = {"job_id": job_id, "data": payload["data"]}
+        task_context = {"job_id": job_id, "data": data}
         await self.task_queue.put(task_context)
 
         try:
-            # Halt execution branch here until an ML worker delivers results
-            result_labels = await job_future
-            return result_labels
+            return await job_future
         finally:
-            # Clean memory store trace boundaries
             self.active_jobs.pop(job_id, None)
-
-            # Record the overall processing latency for this specific request run
             duration = time.perf_counter() - start_time
             self.client_latency.observe(duration)
 
-    async def get_job_handler(self):
-        """
-        Worker Pull Route: Long-polls until a task lands in the queue,
-        then returns the task configuration payload back to the requesting worker.
-        """
-        # Awaits atomically until an item becomes available in the queue
-        task_context = await self.task_queue.get()
+    async def get_job(self):
+        try:
+            task_context = self.task_queue.get_nowait()
+        except asyncio.QueueEmpty:
+            return Response(status_code=204)
 
         self.queue_length.dec()
         self.outgoing_reqs.inc()
@@ -85,11 +57,7 @@ class MLDispatcher:
 
         return task_context
 
-    async def submit_result_handler(self, job_id: str, result: list):
-        """
-        Worker Return Route: Workers post their computed PyTorch predictions
-        here. This resolves the client's original waiting future token.
-        """
+    async def submit_result(self, job_id: str, result: dict):
         if job_id in self.active_jobs:
             job_future = self.active_jobs[job_id]
             if not job_future.done():
@@ -100,7 +68,21 @@ class MLDispatcher:
         raise HTTPException(status_code=404, detail="Job entry expired or not found")
 
 
-# ==================== UVICORN ENTRYPOINT ====================
-# Instantiating the class exposes the underlying inner `.app` target
 dispatcher_instance = MLDispatcher()
-app = dispatcher_instance.app
+app = FastAPI()
+app.mount("/metrics", make_asgi_app())
+
+
+@app.post("/infer")
+async def infer(payload: dict):
+    return await dispatcher_instance.infer(payload)
+
+
+@app.get("/get_job")
+async def get_job():
+    return await dispatcher_instance.get_job()
+
+
+@app.post("/submit_result/{job_id}")
+async def submit_result(job_id: str, result: dict):
+    return await dispatcher_instance.submit_result(job_id, result)

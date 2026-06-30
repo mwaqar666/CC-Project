@@ -1,2 +1,4 @@
 aiohttp
 prometheus-client
+fastapi
+uvicorn

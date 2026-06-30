@@ -20,7 +20,7 @@ spec:
           command: ["uvicorn", "dispatcher:app", "--host", "0.0.0.0", "--port", "8000"]
           ports:
             - containerPort: 8000
-              name: http
+              name: dispatcher-http
           resources:
             limits:
               cpu: "200m"
@@ -35,10 +35,11 @@ metadata:
   name: dispatcher-service
   namespace: ml-apps
 spec:
+  type: ClusterIP
   selector:
     app: dispatcher
   ports:
-    - protocol: TCP
+    - name: dispatcher-http
+      protocol: TCP
       port: 8000
       targetPort: 8000
-  type: ClusterIP

@@ -86,7 +86,7 @@ minikube addons enable metrics-server
 minikube addons enable dashboard
 
 echo "🔌 Connecting terminal session to Minikube's Docker daemon..."
-cleareval $(minikube docker-env)
+eval $(minikube docker-env)
 
 echo "🌐 Registering Minikube endpoints inside Docker contexts..."
 docker context rm minikube-context >/dev/null 2>&1 || true
@@ -115,6 +115,10 @@ build_image "dispatcher-image:latest" "./server/dispatcher"
 build_image "worker-image:latest" "./server/worker"
 
 echo "📦 Applying out Kubernetes manifests..."
+
+# Ensure the storage directories have the correct permissions for Grafana and Prometheus
+chmod -R 777 ./storage/grafana
+chmod -R 777 ./storage/prometheus
 
 # Apply your Kubernetes manifests
 kubectl apply -k ./kubernetes

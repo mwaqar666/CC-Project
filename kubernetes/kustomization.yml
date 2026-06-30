@@ -15,8 +15,29 @@ configMapGenerator:
 resources:
   - 00-namespaces.yml
   - 01-prometheus-deployment.yml
-  - 02-dispatcher-deployment.yml
-  - 03-worker-deployment.yml
-  - 04-client-deployment.yml
-  - 05-hpa-baseline.yml
-  - 06-autoscaler-deployment.yml
+  - 02-grafana-deployment.yml
+  - 03-dispatcher-deployment.yml
+  - 04-worker-deployment.yml
+  - 05-client-deployment.yml
+  - 06-hpa-baseline.yml
+  - 07-autoscaler-deployment.yml
+
+# 3. Dynamic Relative Path Overrides ◄ ADDED
+patches:
+  - target:
+      kind: Deployment
+      name: prometheus
+      namespace: monitoring
+    patch: |
+      - op: replace
+        path: /spec/template/spec/volumes/1/hostPath/path
+        value: ../storage/prometheus
+
+  - target:
+      kind: Deployment
+      name: grafana
+      namespace: monitoring
+    patch: |
+      - op: replace
+        path: /spec/template/spec/volumes/0/hostPath/path
+        value: ../storage/grafana

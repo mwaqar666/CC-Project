@@ -11,11 +11,26 @@ scrape_configs:
           names:
             - ml-apps
     relabel_configs:
-      # If the pod is a worker, client or dispatcher, force Prometheus to scrape port 8000
+      # 1. Map target port 8000 for metrics scraping
       - source_labels: [__meta_kubernetes_pod_label_app, __meta_kubernetes_pod_ip]
-        regex: "(worker|dispatcher|client);(.*)"
+        regex: "(worker|dispatcher|autoscaler|client);(.*)"
         target_label: __address__
         replacement: "${2}:8000"
+
+      # 2. Add namespace label
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+        action: replace
+
+      # 3. Add pod label
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+        action: replace
+
+      # 4. Add app label
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+        action: replace
 
   # Job 2: Core machine container stats directly from the node engine
   - job_name: "kubernetes-cadvisor"
