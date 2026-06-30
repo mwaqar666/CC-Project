@@ -12,6 +12,9 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "nodes", "nodes/metrics", "nodes/proxy", "services", "endpoints", "namespaces"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
     verbs: ["get", "list", "watch"]
@@ -50,18 +53,24 @@ spec:
       containers:
         - name: prometheus
           image: prom/prometheus:latest
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
           ports:
             - containerPort: 9090
+              name: prometheus-http
           resources:
             requests:
-              cpu: "400m"
-              memory: "512Mi"
+              cpu: "250m"
+              memory: "256Mi"
             limits:
-              cpu: "400m"
-              memory: "512Mi"
+              cpu: "250m"
+              memory: "256Mi"
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus
+            - name: prometheus-storage
+              mountPath: /prometheus
       volumes:
         - name: config-volume
           configMap:
@@ -69,19 +78,22 @@ spec:
             items:
               - key: prometheus.yml
                 path: prometheus.yml
+        - name: prometheus-storage
+          hostPath:
+            path: /tmp/placeholder
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
+  name: prometheus-service
   namespace: monitoring
 spec:
   type: NodePort
   selector:
     app: prometheus
   ports:
-    - name: dashboard
+    - name: prometheus-http
       protocol: TCP
       port: 9090
       targetPort: 9090
-      nodePort: 30090

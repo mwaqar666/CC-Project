@@ -26,5 +26,5 @@ spec:
               cpu: "1000m"
               memory: "1024Mi"
           env:
-            - name: DISPATCHER_SERVICE_URL
+            - name: DISPATCHER_URL
               value: "http://dispatcher-service.ml-apps.svc.cluster.local:8000"
